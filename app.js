@@ -15,37 +15,38 @@
 
 // Imgur API Key: ef634f8fc76b2a3feff2f0bba6eddb7e
 
-var imgur      = require('./lib/imgur.js'),
-	reddit     = require('./lib/reddit.js'),
-	deviantart = require('./lib/deviantart.js'),
-	
-	fs         = require('fs'),
-	mirrorLog  = JSON.parse(fs.readFileSync('./data/mirrorLog.json')),
-	commentLog = JSON.parse(fs.readFileSync('./data/commentLog.json')),
-	
-	stories	   = [],
-	subreddits = [
-		//	"adventuretime",
-		//	"ainbowdash",
-		//	"alternativeart",
-		//	"Applejack",
-		//	"derpyhooves",
-		//	"fluttershy",
-		//	"gravityfalls",
-		//	"gumball",
-		//	"Idliketobeatree",
-		//	"mylittlealcoholic",
-		//	"mylittlecmc",
-		//	"MyLittleFoodManes",
-		//	"MyLittleOutOfContext",
-		"mylittlepony",
-		//	"mylittleWTF",
-		//	"pics",
-		//	"pinkiepie",
-		//	"Rarity",
-		//	"regularshow",
-		//	"twilightsparkle"
-		];
+var imgur       = require('./lib/imgur.js'),
+    reddit      = require('./lib/reddit.js'),
+    deviantart  = require('./lib/deviantart.js'),
+    
+    _           = require('underscore'),
+    Backbone    = require('backbone'),
+    
+    StoryQueue = new (require('./collections/StoryQueue.js')),
+    
+    subreddits  = [
+    	"totally_not_a_bot"
+        //	"adventuretime",
+        //	"ainbowdash",
+        //	"alternativeart",
+        //	"Applejack",
+        //	"derpyhooves",
+        //	"fluttershy",
+        //	"gravityfalls",
+        //	"gumball",
+        //	"Idliketobeatree",
+        //	"mylittlealcoholic",
+        //	"mylittlecmc",
+        //	"MyLittleFoodManes",
+        //	"MyLittleOutOfContext",
+        //	"mylittlepony",
+        //	"mylittleWTF",
+        //	"pics",
+        //	"pinkiepie",
+        //	"Rarity",
+        //	"regularshow",
+        //	"twilightsparkle"
+    ];
 
 console.beep = function(){
 	console.log("\007");
@@ -61,96 +62,96 @@ reddit.login({
 	},
 	success: function(){
 		console.log("Logged in.");
-		getStories();
-		setInterval(getStories, 5000 * 60); // check new stories every 5 minutes
+		storyLoop();
+		setInterval(storyLoop, 5000 * 60); // check new stories every 5 minutes
+		setInterval(mirrorLoop, 1000 * 60); // mirror a link every minute
+		setInterval(commentLoop, 10000 * 60); // comment on a link every 10 minutes
 	}
 });
 
-function getStories() {
+function storyLoop() {
 	
-	console.log("Getting stories.");
+	console.log("Getting new stories.");
 	
 	reddit.getStories({
 		subreddit: "/r/" + subreddits.join("+"),
-		error: function(error){
-			console.log("Error getting stories: " + error);
+		error: function(error, response, body){
+			console.log("    Error getting stories:");
+			console.log(error);
+			console.log(response.statusCode);
+			//console.log(response.request);
 		},
-		success: function(story){
+		success: function(stories){
 			
-			// only consider links to DeviantArt
-			if(!story.domain.match(/deviantart\.com$/)) return false;
-			
-			// skip this story if we've already mirrored it's image
-			if(mirrorLog.indexOf(story.id) != -1) return false;
-			
-			deviantart.getImage(story.url, function(imageUrl){
-				
-				imgur.mirror(imageUrl, function(mirroredImageUrl){
-					
-					if(!imageUrl || mirroredImageUrl == "http://imgur.com/?error")
-						return false;
-					
-					story.imageUrl         = imageUrl,
-					story.mirroredImageUrl = mirroredImageUrl;
-					
-					console.log("    Mirrored " + story.id + " from /r/" + story.subreddit + ":\n        " + imageUrl + "\n        " + mirroredImageUrl + "\n");
-					
-					mirrorLog.push(story.id);
-					saveMirrorLog();
-					
-					var pony = (story.subreddit.toLowerCase() == "mylittlepony")?"[](/scootacheer)":"";
-					
-					reddit.comment({
-						thingId: story.id,
-						thingType: "link",
-						text: pony+"[Here's an Imgur mirror!](" + story.mirroredImageUrl + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report%26text=Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase%26subject=ATTN:%20DeviantArtMirrorBot)",
-						error: function(error){
-							console.log("    Error making comment on " + story.id + ":");
-							console.log(error);
-							console.log("\n");
-						},
-						success: function(){
-							console.beep();
-							console.log("    Commented on http://reddit.com/r/" + story.subreddit + "/comments/" + story.id + "\n");
-							commentLog.push(story.id);
-							saveCommentLog();
-						}
-					});
-					
-				});
-				
+			// only consider stories from DeviantArt
+			stories = stories.filter(function(story){
+				return story.domain.match(/deviantart\.com$/);
 			});
+			
+			console.log("    Added " + stories.length + ((stories.length==1)?" story.":" stories."));
+			
+			StoryQueue.add(stories).save();
+			
 		}
 	});
 	
 }
 
-function saveMirrorLog() {
+function mirrorLoop() {
 	
-	var data = JSON.stringify(mirrorLog);
+	var story = StoryQueue.find(function(story){ return story.get("mirrored_image") === null; });
 	
-	fs.writeFile("./data/mirrorLog.json", data, function (error) {
-		if(error) {
-			console.log("Error saving mirrorLog:");
-			console.log(error.message);
-			return false;
-		}
-		return true;
+	console.log("Mirroring image:");
+	console.log('    "' + story.get("title") + '" (http://reddit.com' + story.get("permalink") + ')');
+	console.log('    -> ' + story.get("url"));
+	
+	return false;
+	
+	// skip this story if we've already mirrored it's image
+	if(mirrorLog.indexOf(story.id) != -1) return false;
+	
+	deviantart.getImage(story.url, function(imageUrl){
+		
+		imgur.mirror(imageUrl, function(mirroredImageUrl){
+			
+			if(!imageUrl || mirroredImageUrl == "http://imgur.com/?error")
+				return false;
+			
+			story.imageUrl         = imageUrl,
+			story.mirroredImageUrl = mirroredImageUrl;
+			
+			console.log("    Mirrored " + story.id + " from /r/" + story.subreddit + ":\n        " + imageUrl + "\n        " + mirroredImageUrl + "\n");
+			
+		});
+		
 	});
-	
 }
 
-function saveCommentLog() {
+function commentLoop() {
 	
-	var data = JSON.stringify(commentLog);
+	console.log("Commenting on a story.");
+	return false;
 	
-	fs.writeFile("./data/commentLog.json", data, function (error) {
-		if(error) {
-			console.log("Error saving commentLog:");
-			console.log(error.message);
-			return false;
+	// skip this story if we've already mirrored it's image
+	if(commentLog.indexOf(story.id) != -1) return false;
+	
+	var pony = (story.subreddit.toLowerCase() == "mylittlepony")?"[](/scootacheer)":"";
+	
+	reddit.comment({
+		thingId: story.id,
+		thingType: "link",
+		text: pony+"[Here's an Imgur mirror!](" + story.mirroredImageUrl + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report%26text=Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase%26subject=ATTN:%20DeviantArtMirrorBot)",
+		error: function(error){
+			console.log("    Error making comment on " + story.id + ":");
+			console.log(error);
+			console.log("\n");
+		},
+		success: function(){
+			console.beep();
+			console.log("    Commented on http://reddit.com/r/" + story.subreddit + "/comments/" + story.id + "\n");
+			commentLog.push(story.id);
+			saveCommentLog();
 		}
-		return true;
 	});
 	
 }
