@@ -162,12 +162,12 @@ function commentLoop() {
 	}
 	
 	// put Scootaloo in the comment if we're on MLP :D
-	var pony = (story.subreddit.toLowerCase() == "mylittlepony")?"[](/scootacheer)":"",
+	var pony = (story.get("subreddit").toLowerCase() == "mylittlepony")?"[](/scootacheer)":"",
 	    
 	    commentText = pony + "[Here's an Imgur mirror!](" + story.get("mirrored_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report%26text=Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase%26subject=ATTN:%20DeviantArtMirrorBot)";
 	
 	reddit.comment({
-		thingId: story.id,
+		thingId: story.get("id"),
 		thingType: "link",
 		text: commentText,
 		error: function(error){
