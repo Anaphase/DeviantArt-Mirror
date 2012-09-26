@@ -17,16 +17,16 @@
 
 // Imgur API Key: ef634f8fc76b2a3feff2f0bba6eddb7e
 
-var imgur       = require('./lib/imgur.js'),
-    reddit      = require('./lib/reddit.js'),
-    deviantart  = require('./lib/deviantart.js'),
+var imgur       = require('./lib/imgur.js')
+  , reddit      = require('./lib/reddit.js')
+  , deviantart  = require('./lib/deviantart.js')
     
-    _           = require('underscore'),
-    Backbone    = require('backbone'),
+  , _           = require('underscore')
+  , Backbone    = require('backbone')
     
-    StoryQueue = new (require('./collections/StoryQueue.js')),
+  , StoryQueue = new (require('./collections/StoryQueue.js'))
     
-    subreddits  = [
+  , subreddits  = [
     	"totally_not_a_bot"
         //	"adventuretime",
         //	"ainbowdash",
@@ -48,10 +48,16 @@ var imgur       = require('./lib/imgur.js'),
         //	"Rarity",
         //	"regularshow",
         //	"twilightsparkle"
-    ];
+    ]
+    
+    // setInterval IDs
+  , storyLoopID = null
+  , mirrorLoopID = null
+  , commentLoopID = null
+;
 
 console.beep = function(){
-	console.log("\007");
+	process.stdout.write("\007");
 }
 
 reddit.login({
@@ -65,9 +71,9 @@ reddit.login({
 	success: function(){
 		console.log("Logged in.");
 		storyLoop();
-		setInterval(storyLoop, 5000 * 60); // check new stories every 5 minutes
-		setInterval(mirrorLoop, 1000 * 60); // mirror a link every minute
-		setInterval(commentLoop, 10000 * 60); // comment on a link every 10 minutes
+		storyLoopID = setInterval(storyLoop, 5000 * 60); // check new stories every 5 minutes
+		//mirrorLoopID = setInterval(mirrorLoop, 1000 * 60); // mirror a link every minute
+		//commentLoopID = setInterval(commentLoop, 10000 * 60); // comment on a link every 10 minutes
 	}
 });
 
@@ -81,7 +87,7 @@ function storyLoop() {
 			console.log("    Error getting stories:");
 			console.log(error);
 			console.log(response.statusCode);
-			//console.log(response.request);
+			console.log(response.request);
 		},
 		success: function(stories){
 			
@@ -94,8 +100,17 @@ function storyLoop() {
 			
 			StoryQueue.add(stories).save({
 				success: function(){
+					
 					var numAddedStories = StoryQueue.size() - oldStoryQueueSize;
+					
 					console.log("    Added " + numAddedStories + " new " + ((numAddedStories==1)?"story.":"stories."));
+					
+					if(!mirrorLoopID){
+						// mirror a link every minute
+						mirrorLoop();
+						mirrorLoopID = setInterval(mirrorLoop, 1000 * 60);
+					}
+					
 				}
 			});
 			
@@ -138,11 +153,19 @@ function mirrorLoop() {
 			
 			StoryQueue.save({
 				success: function(){
+					
 					console.log("Mirrored image:");
 					console.log('    "' + story.get("title") + '" (http://reddit.com' + story.get("permalink") + ')');
 					console.log('    -> ' + story.get("url"));
 					console.log('    -> ' + story.get("deviantart_image"));
 					console.log('    -> ' + story.get("mirrored_image"));
+					
+					if(!commentLoopID){
+						// comment on a link every 10 minutes
+						commentLoop();
+						commentLoopID = setInterval(commentLoop, 10000 * 60);
+					}
+					
 				}
 			});
 			
