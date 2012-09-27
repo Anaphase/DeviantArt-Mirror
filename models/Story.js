@@ -10,7 +10,10 @@ module.exports = Backbone.Model.extend({
 		"failed_comments": 0, // determines how far down the queue we'll place this story if a comment fails
 		"deviantart_image": null,
 		"mirrored_image": null,
-		"comment_id": null, // the Reddit "Thing ID" that denotes the comment I've made in this story
+		"comment_id": null, // the Reddit "Thing ID" that denotes the comment I've made on this story
+		
+		"ignore": false, // set to true when this story has failed to mirror/comment a lot
+		"ignore_threshold": 10, // how many failed mirrors or comments before we stop trying?
 		
 		// REDDIT DATA
 		"kind": "t3",
@@ -51,25 +54,38 @@ module.exports = Backbone.Model.extend({
 	},
 	
 	initialize: function(){
+		
 		this.set({"queue_position": this.get("score")});
+		
+		if(this.get("failed_mirrors") > 0) {
+			this.updateQueuePosition(this.get("failed_mirrors"));
+		}
+		
+		if(this.get("failed_comments") > 0) {
+			this.updateQueuePosition(this.get("failed_comments"));
+		}
+		
 		this.on("change:failed_mirrors", function(){
 			this.updateQueuePosition(this.get("failed_mirrors"));
 		}, this);
+		
 		this.on("change:failed_comments", function(){
 			this.updateQueuePosition(this.get("failed_comments"));
 		}, this);
 	},
 	
 	failedToMirror: function(){
-		var failed_mirrors = this.get("failed_mirrors");
+		var failed_mirrors   = this.get("failed_mirrors"),
+		    ignore_threshold = this.get("ignore_threshold");
 		failed_mirrors++;
-		this.set({"failed_mirrors": failed_mirrors});
+		this.set({ "failed_mirrors": failed_mirrors, "ignore": (failed_mirrors >= ignore_threshold) });
 	},
 	
 	failedToComment: function(){
-		var failed_comments = this.get("failed_comments");
+		var failed_comments  = this.get("failed_comments"),
+		    ignore_threshold = this.get("ignore_threshold");
 		failed_comments++;
-		this.set({"failed_comments": failed_comments});
+		this.set({ "failed_comments": failed_comments, "ignore": (failed_comments >= ignore_threshold) });
 	},
 	
 	updateQueuePosition: function(perpetrator){
@@ -83,7 +99,7 @@ module.exports = Backbone.Model.extend({
 		
 		this.collection.sort();
 		
-		console.log("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ". (Perpetrator: " + perpetrator + ")");
+		console.log("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".");
 		
 	}
 	

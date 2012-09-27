@@ -20,6 +20,12 @@
 var imgur       = require('./lib/imgur.js')
   , reddit      = require('./lib/reddit.js')
   , deviantart  = require('./lib/deviantart.js')
+  
+  , clc         = require('cli-color')
+  , clcMessage  = function(s){return s;}
+  , clcComment  = clc.green
+  , clcError    = function(s){return s;}
+  , clcWarn     = function(s){return s;}
     
   , _           = require('underscore')
   , Backbone    = require('backbone')
@@ -27,7 +33,7 @@ var imgur       = require('./lib/imgur.js')
   , StoryQueue = new (require('./collections/StoryQueue.js'))
     
   , subreddits  = [
-    	"totally_not_a_bot"
+    	"mylittlepony"
         //	"adventuretime",
         //	"ainbowdash",
         //	"alternativeart",
@@ -69,26 +75,49 @@ reddit.login({
 	password: "poopie",
 	error: function(errors){
 		errors.forEach(function(error){
-			console.log("Error logging in: " + error[1]);
+			console.log(clcError("Error logging in: " + error[1]));
 		});
 	},
 	success: function(){
-		console.log("Logged in.");
-		storyLoop();
-		storyLoopID = setInterval(storyLoop, 5000 * 60); // check new stories every 5 minutes
-		mirrorLoopID = setInterval(mirrorLoop, 1000 * 60); // mirror a link every minute
-		commentLoopID = setInterval(commentLoop, 10000 * 60); // comment on a link every 10 minutes
+		console.log(clcMessage("Logged in."));
+		startStoryLoop();
+		//startMirrorLoop();
+		//startCommentLoop();
 	}
 });
 
+function startStoryLoop() {
+	if(!storyLoopID){
+		// check new stories every 5 minutes
+		storyLoop();
+		storyLoopID = setInterval(storyLoop, 5000 * 60); 
+	}
+}
+
+function startMirrorLoop() {
+	if(!mirrorLoopID){
+		// mirror a link every minute
+		mirrorLoop();
+		mirrorLoopID = setInterval(mirrorLoop, 1000 * 60);
+	}
+}
+
+function startCommentLoop() {
+	if(!commentLoopID){
+		// comment on a link every 10 minutes
+		commentLoop();
+		commentLoopID = setInterval(commentLoop, 10000 * 60);
+	}
+}
+
 function storyLoop() {
 	
-	console.log("Getting new stories...");
+	console.log(clcMessage("Getting new stories..."));
 	
 	reddit.getStories({
 		subreddit: "/r/" + subreddits.join("+"),
 		error: function(error, response, body){
-			console.log("    Error getting stories:");
+			console.log(clcError("    Error getting stories:"));
 			console.log(error);
 			console.log(response.statusCode);
 			console.log(response.request);
@@ -110,14 +139,11 @@ function storyLoop() {
 				StoryQueue.save();
 			}
 				
-			console.log("    Added " + numAddedStories + " new " + ((numAddedStories==1)?"story.":"stories."));
+			console.log(clcMessage("    Added " + numAddedStories + " new " + ((numAddedStories==1)?"story.":"stories.")));
 			
-			//	if(!mirrorLoopID){
-			//		// mirror a link every minute
-			//		mirrorLoop();
-			//		mirrorLoopID = setInterval(mirrorLoop, 1000 * 60);
-			//	}
-			
+		},
+		complete: function(){
+			startMirrorLoop();
 		}
 	});
 	
@@ -126,17 +152,19 @@ function storyLoop() {
 function mirrorLoop() {
 	
 	// find the first story that hasn't been mirrored yet
-	var story = StoryQueue.find(function(story){ return story.get("mirrored_image") === null; });
+	var story = StoryQueue.getNextStoryForMirror();
 	
 	if(!story) {
 		if(printAllMirrored){
-			console.log("All stories in queue have been mirrored!");
+			console.log(clcWarn("All stories in queue have been mirrored!"));
 			printAllMirrored = false;
 		}
 		return true;
 	}
 	
 	printAllMirrored = true;
+	
+	var mirrorProgress = (StoryQueue.numNotMirrored() + 1) + "/" + StoryQueue.size();
 	
 	deviantart.getImage(story.get("url"), function(deviantart_image){
 		
@@ -146,11 +174,13 @@ function mirrorLoop() {
 			// and move it down the queue (handled internally)
 			if(!deviantart_image || !mirrored_image || mirrored_image == "http://imgur.com/?error") {
 				
-				console.log("Failed to mirror image:");
-				console.log('    "' + story.get("title") + '" (http://reddit.com' + story.get("permalink") + ')');
-				console.log('    -> ' + story.get("url"));
-				
 				story.failedToMirror();
+				
+				console.log(clcError("Failed to mirror image " + mirrorProgress + " (attempt " + story.get("failed_mirrors") + " of " + story.get("ignore_threshold") + "):"));
+				console.log(clcError('    "' + story.get("title") + '" ' + story.get("score") + ' (http://reddit.com' + story.get("permalink") + ')'));
+				console.log(clcError('    -> ' + story.get("url")));
+				
+				startCommentLoop();
 				
 				return false;
 			}
@@ -160,17 +190,14 @@ function mirrorLoop() {
 				"mirrored_image": mirrored_image
 			});
 			
-			console.log("Mirrored image:");
-			console.log('    "' + story.get("title") + '" (http://reddit.com' + story.get("permalink") + ')');
-			console.log('    -> ' + story.get("url"));
-			console.log('    -> ' + story.get("deviantart_image"));
-			console.log('    -> ' + story.get("mirrored_image"));
+			console.log(clcMessage("Mirrored image " + mirrorProgress + ":"));
+			console.log(clcMessage('    "' + story.get("title") + '" ' + story.get("score") + ' (http://reddit.com' + story.get("permalink") + ')'));
+			console.log(clcMessage('    -> ' + story.get("url")));
+			console.log(clcMessage('    -> ' + story.get("deviantart_image")));
+			console.log(clcMessage('    -> ' + story.get("mirrored_image")));
 			
-			//	if(!commentLoopID){
-			//		// comment on a link every 10 minutes
-			//		commentLoop();
-			//		commentLoopID = setInterval(commentLoop, 10000 * 60);
-			//	}
+			startCommentLoop();
+			startCommentLoop();
 			
 			StoryQueue.save();
 			
@@ -181,14 +208,12 @@ function mirrorLoop() {
 
 function commentLoop() {
 	
-	// find the first story that hasn't been commented on yet
-	var story = StoryQueue.find(function(story){
-		return story.get("mirrored_image") !== null && story.get("comment_id") === null;
-	});
+	// find the first story that has been mirrored, but hasn't been commented on yet
+	var story = StoryQueue.getNextStoryForComment();
 	
 	if(!story) {
 		if(printAllCommented){
-			console.log("All mirrored stories in queue have been commented on!");
+			console.log(clcWarn("All mirrored stories in queue have been commented on!"));
 			printAllCommented = false;
 		}
 		return true;
@@ -196,32 +221,23 @@ function commentLoop() {
 	
 	printAllCommented = true;
 	
+	var commentProgress = (StoryQueue.numCommented() + 1) + "/" + StoryQueue.size();
+	
 	// put Scootaloo in the comment if we're on MLP :D
 	var pony = (story.get("subreddit").toLowerCase() == "mylittlepony")?"[](/scootacheer)":"",
 	    
 	    commentText = pony + "[Here's an Imgur mirror!](" + story.get("mirrored_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report%26text=Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase%26subject=ATTN:%20DeviantArtMirrorBot)";
 	
-	story.set({"comment_id": "fake_id"});
-	
-	console.beep();
-	console.log("I WOULD HAVE Commented on story:");
-	console.log('    "' + story.get("title") + '" (http://reddit.com' + story.get("permalink") + ')');
-	console.log('    -> ' + story.get("url"));
-	console.log('    -> Comment ID: ' + "fake_id");
-	
-	return true;
-	
-	/*
 	reddit.comment({
 		thingId: story.get("id"),
 		thingType: "link",
 		text: commentText,
 		error: function(error){
 			
-			console.log("Failed to comment on story:");
-			console.log('    "' + story.get("title") + '" (http://reddit.com' + story.get("permalink") + ')');
-			console.log('    -> ' + story.get("url"));
-			console.log(error);
+			console.log(clcError("Failed to comment on story " + commentProgress + " (attempt " + story.get("failed_comments") + " of " + story.get("ignore_threshold") + "):"));
+			console.log(clcError('    "' + story.get("title") + '" ' + story.get("score") + ' (http://reddit.com' + story.get("permalink") + ')'));
+			console.log(clcError('    -> ' + story.get("url")));
+			console.log(clcError(error));
 			
 			story.failedToComment();
 			
@@ -237,15 +253,14 @@ function commentLoop() {
 			StoryQueue.save({
 				success: function(){
 					console.beep();
-					console.log("Commented on story:");
-					console.log('    "' + story.get("title") + '" (http://reddit.com' + story.get("permalink") + ')');
-					console.log('    -> ' + story.get("url"));
-					console.log('    -> Comment ID: ' + commentID);
+					console.log(clcComment("Commented on story " + commentProgress + ":"));
+					console.log(clcComment('    "' + story.get("title") + '" ' + story.get("score") + ' (http://reddit.com' + story.get("permalink") + ')'));
+					console.log(clcComment('    -> ' + story.get("url")));
+					console.log(clcComment('    -> Comment ID: ' + commentID));
 				}
 			});
 			
 		}
 	});
-	*/
 	
 }
