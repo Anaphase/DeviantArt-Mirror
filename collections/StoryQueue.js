@@ -17,10 +17,15 @@ module.exports = Backbone.Collection.extend({
 	},
 	
 	load: function(data){
+		
+		data = data || {};
+		
 		this.reset(JSON.parse(fs.readFileSync('./data/StoryQueue.json')));
 	},
 	
 	save: function(data){
+		
+		data = data || {};
 		
 		//  variable          source           default
 		var errorCallback   = data.error    || function(){ console.log("Error saving StoryQueue:"); console.log(error.message); },
