@@ -1,5 +1,7 @@
 var _        = require('underscore'),
-    Backbone = require('backbone');
+    Backbone = require('backbone'),
+    
+    ignoreThreshold = 5; // how many failed mirrors or comments before we stop trying?
 
 module.exports = Backbone.Model.extend({
 	
@@ -13,7 +15,7 @@ module.exports = Backbone.Model.extend({
 		"comment_id": null, // the Reddit "Thing ID" that denotes the comment I've made on this story
 		
 		"ignore": false, // set to true when this story has failed to mirror/comment a lot
-		"ignore_threshold": 10, // how many failed mirrors or comments before we stop trying?
+		"ignore_threshold": ignoreThreshold, // how many failed mirrors or comments before we stop trying?
 		
 		// REDDIT DATA
 		"kind": "t3",
@@ -55,14 +57,18 @@ module.exports = Backbone.Model.extend({
 	
 	initialize: function(){
 		
-		this.set({"queue_position": this.get("score")});
+		this.set({
+			"queue_position": this.get("score"),
+			"ignore_threshold": ignoreThreshold,
+			"ignore": (this.get("failed_mirrors") >= ignoreThreshold)
+		});
 		
 		if(this.get("failed_mirrors") > 0) {
-			this.updateQueuePosition(this.get("failed_mirrors"));
+			this.updateQueuePosition(this.get("failed_mirrors"), true);
 		}
 		
 		if(this.get("failed_comments") > 0) {
-			this.updateQueuePosition(this.get("failed_comments"));
+			this.updateQueuePosition(this.get("failed_comments"), true);
 		}
 		
 		this.on("change:failed_mirrors", function(){
@@ -88,7 +94,7 @@ module.exports = Backbone.Model.extend({
 		this.set({ "failed_comments": failed_comments, "ignore": (failed_comments >= ignore_threshold) });
 	},
 	
-	updateQueuePosition: function(perpetrator){
+	updateQueuePosition: function(perpetrator, silent){
 		
 		var oldQueuePosition = this.get("queue_position"),
 		    newQueuePosition = this.get("score") - Math.pow(2, perpetrator);
@@ -99,7 +105,7 @@ module.exports = Backbone.Model.extend({
 		
 		this.collection.sort();
 		
-		console.log("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".");
+		if(!silent) console.log("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".");
 		
 	}
 	
