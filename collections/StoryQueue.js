@@ -16,6 +16,30 @@ module.exports = Backbone.Collection.extend({
 		this.load();
 	},
 	
+	// override add function to update story data before Backbone discards duplicates
+	add: function(stories){
+		var that = this;
+		stories.forEach(function(story){
+			
+			var duplicate = that.where({"id": story.id, "ignore": false})[0];
+			
+			if(!duplicate) {
+				Backbone.Collection.prototype.add.call(that, story);
+			} else {
+				// replace a few values to get the queue up to date
+				duplicate.set({
+					"queue_position": duplicate.get("queue_position") - (duplicate.get("score") - story.score), // updates queue position relative to the change in score
+					"num_comments": story.num_comments,
+					"score": story.score,
+					"edited": story.edited,
+					"downs": story.downs,
+					"ups": story.ups
+				});
+			}
+			
+		});
+	},
+	
 	// override normal size function to account for "ignored" models
 	size: function(){
 		return this.where({"ignore": false}).length;

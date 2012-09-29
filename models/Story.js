@@ -64,19 +64,19 @@ module.exports = Backbone.Model.extend({
 		});
 		
 		if(this.get("failed_mirrors") > 0) {
-			this.updateQueuePosition(this.get("failed_mirrors"), true);
+			this.backoff(this.get("failed_mirrors"));
 		}
 		
 		if(this.get("failed_comments") > 0) {
-			this.updateQueuePosition(this.get("failed_comments"), true);
+			this.backoff(this.get("failed_comments"));
 		}
 		
 		this.on("change:failed_mirrors", function(){
-			this.updateQueuePosition(this.get("failed_mirrors"));
+			this.backoff(this.get("failed_mirrors"));
 		}, this);
 		
 		this.on("change:failed_comments", function(){
-			this.updateQueuePosition(this.get("failed_comments"));
+			this.backoff(this.get("failed_comments"));
 		}, this);
 	},
 	
@@ -94,10 +94,11 @@ module.exports = Backbone.Model.extend({
 		this.set({ "failed_comments": failed_comments, "ignore": (failed_comments >= ignore_threshold) });
 	},
 	
-	updateQueuePosition: function(perpetrator, silent){
+	// move down in the queue with an exponential backoff
+	backoff: function(exponent){
 		
 		var oldQueuePosition = this.get("queue_position"),
-		    newQueuePosition = this.get("score") - Math.pow(2, perpetrator);
+		    newQueuePosition = this.get("score") - Math.pow(2, exponent);
 		
 		if(newQueuePosition < 0) newQueuePosition = 0;
 		
@@ -105,7 +106,7 @@ module.exports = Backbone.Model.extend({
 		
 		this.collection.sort();
 		
-		if(!silent) console.log("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".");
+		// console.log("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".");
 		
 	}
 	

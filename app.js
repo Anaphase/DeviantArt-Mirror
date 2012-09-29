@@ -70,31 +70,31 @@ _.extend(console, {
 		process.stdout.write("\007");
 	},
 	
-	logBold: function(s){ console.log(s.bold); },
-	logItalic: function(s){ console.log(s.italic); },
-	logUnderline: function(s){ console.log(s.underline); },
-	logInverse: function(s){ console.log(s.inverse); },
-	logYellow: function(s){ console.log(s.yellow); },
-	logCyan: function(s){ console.log(s.cyan); },
-	logWhite: function(s){ console.log(s.white); },
-	logMagenta: function(s){ console.log(s.magenta); },
-	logGreen: function(s){ console.log(s.green); },
-	logRed: function(s){ console.log(s.red); },
-	logGrey: function(s){ console.log(s.grey); },
-	logBlue: function(s){ console.log(s.blue); },
-	logRainbow: function(s){ console.log(s.rainbow); },
-	logZebra: function(s){ console.log(s.zebra); },
-	logRandom: function(s){ console.log(s.random); },
+	logBold: function(s){ (typeof s === "string")?console.log(s.bold):console.log(s); },
+	logItalic: function(s){ (typeof s === "string")?console.log(s.italic):console.log(s); },
+	logUnderline: function(s){ (typeof s === "string")?console.log(s.underline):console.log(s); },
+	logInverse: function(s){ (typeof s === "string")?console.log(s.inverse):console.log(s); },
+	logYellow: function(s){ (typeof s === "string")?console.log(s.yellow):console.log(s); },
+	logCyan: function(s){ (typeof s === "string")?console.log(s.cyan):console.log(s); },
+	logWhite: function(s){ (typeof s === "string")?console.log(s.white):console.log(s); },
+	logMagenta: function(s){ (typeof s === "string")?console.log(s.magenta):console.log(s); },
+	logGreen: function(s){ (typeof s === "string")?console.log(s.green):console.log(s); },
+	logRed: function(s){ (typeof s === "string")?console.log(s.red):console.log(s); },
+	logGrey: function(s){ (typeof s === "string")?console.log(s.grey):console.log(s); },
+	logBlue: function(s){ (typeof s === "string")?console.log(s.blue):console.log(s); },
+	logRainbow: function(s){ (typeof s === "string")?console.log(s.rainbow):console.log(s); },
+	logZebra: function(s){ (typeof s === "string")?console.log(s.zebra):console.log(s); },
+	logRandom: function(s){ (typeof s === "string")?console.log(s.random):console.log(s); },
 	
-	warn: function(s){ console.log(s.yellow); },
-	error: function(s){ console.log(s.red); }
+	warn: function(s){ console.logYellow(s); },
+	error: function(s){ console.logRed(s); }
 	
 });
 
-// check new stories every 5 minutes
+// check new stories every 10 minutes
 var startStoryLoop = _.once(function(){
 	storyLoop();
-	storyLoopID = setInterval(storyLoop, 5000 * 60); 
+	storyLoopID = setInterval(storyLoop, 10000 * 60); 
 });
 
 // mirror a link every minute
@@ -109,7 +109,7 @@ var startCommentLoop = _.once(function(){
 	commentLoopID = setInterval(commentLoop, 5000 * 60);
 });
 
-console.log("DeviantArt Mirror Bot - By http://reddit.com/u/Anaphase".blue.invert);
+console.log("DeviantArt Mirror Bot - By http://reddit.com/u/Anaphase".cyan.underline.inverse);
 
 reddit.login({
 	username: "DeviantArtMirrorBot",
@@ -120,7 +120,7 @@ reddit.login({
 		});
 	},
 	success: function(){
-		console.log("Logged in.");
+		console.logGrey("Logged in.");
 		startStoryLoop();
 		//startMirrorLoop();
 		//startCommentLoop();
@@ -134,10 +134,8 @@ function storyLoop() {
 	reddit.getStories({
 		subreddit: "/r/" + subreddits.join("+"),
 		error: function(error, response, body){
-			console.error("    Error getting stories:");
-			console.log(error);
-			console.log(response.statusCode);
-			console.log(response.request);
+			console.error(" Error getting stories:");
+			console.error(error);
 		},
 		success: function(stories){
 			
@@ -173,48 +171,63 @@ function mirrorLoop() {
 	
 	if(!story) {
 		printAllMirrored();
+		startCommentLoop();
 		return true;
 	}
 	
 	printAllMirrored = _.once(printAllMirroredDefault);
 	
-	var mirrorProgress = (StoryQueue.numNotMirrored() + 1) + "/" + StoryQueue.size();
+	var mirrorProgress = (StoryQueue.numMirrored() + 1) + "/" + StoryQueue.size();
 	
-	deviantart.getImage(story.get("url"), function(deviantart_image){
-		
-		imgur.mirror(deviantart_image, function(mirrored_image){
+	deviantart.getImage({
+		url: story.get("url"),
+		error: function(error){
+			console.error(error);
+			startCommentLoop();
+		},
+		success: function(deviantart){
 			
-			// there was an error mirroring this image, abort
-			// and move it down the queue (handled internally)
-			if(!deviantart_image || !mirrored_image || mirrored_image == "http://imgur.com/?error") {
+			imgur.mirror({
+				url: deviantart.url,
+				error: function(error){
+					console.error(error);
+				},
+				success: function(mirrored_image){
+					
+					// there was an error mirroring this image, abort
+					// and move it down the queue (handled internally)
+					if(!deviantart.url || !mirrored_image || mirrored_image == "http://imgur.com/?error") {
+						
+						console.error(("Failed to mirror image " + mirrorProgress + " (attempt " + (story.get("failed_mirrors")+1) + " of " + story.get("ignore_threshold") + "):").bold);
+						console.error('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')');
+						console.error('    -> ' + story.get("url").underline);
+						
+						story.failedToMirror();
+						
+						return false;
+					}
+					
+					story.set({
+						"deviantart_image": deviantart.url,
+						"mirrored_image": mirrored_image
+					});
+					
+					console.logBold("Mirrored image " + mirrorProgress + ":");
+					console.log('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')');
+					console.log('    -> ' + story.get("url").underline);
+					console.log('    -> ' + story.get("deviantart_image").underline);
+					console.log('    -> ' + story.get("mirrored_image").underline);
+					
+					StoryQueue.save();
+					
+				},
+				complete: function(){
+					startCommentLoop();
+				}
 				
-				console.error(("Failed to mirror image " + mirrorProgress + " (attempt " + (story.get("failed_mirrors")+1) + " of " + story.get("ignore_threshold") + "):").bold);
-				console.error('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')');
-				console.error('    -> ' + story.get("url").underline);
-				
-				story.failedToMirror();
-				
-				startCommentLoop();
-				
-				return false;
-			}
-			
-			story.set({
-				"deviantart_image": deviantart_image,
-				"mirrored_image": mirrored_image
 			});
 			
-			console.logBold("Mirrored image " + mirrorProgress + ":");
-			console.log('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')');
-			console.log('    -> ' + story.get("url").underline);
-			console.log('    -> ' + story.get("deviantart_image").underline);
-			console.log('    -> ' + story.get("mirrored_image").underline);
-			
-			startCommentLoop();
-			
-			StoryQueue.save();
-			
-		});
+		}
 		
 	});
 }
@@ -236,12 +249,14 @@ function commentLoop() {
 	// put Scootaloo in the comment if we're on MLP :D
 	var pony = (story.get("subreddit").toLowerCase() == "mylittlepony")?"[](/scootacheer)":"",
 	    
-	    commentText = pony + "[Here's an Imgur mirror!](" + story.get("mirrored_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report%26text=Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase%26subject=ATTN:%20DeviantArtMirrorBot)";
+	    commentText = pony + "[Here's an Imgur mirror!](" + story.get("mirrored_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report&text=Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot)";
 	
-	console.logCyan("About to comment:");
-	console.logCyan("    -> ignore         = " + story.get("ignore"));
-	console.logCyan("    -> comment_id     = " + story.get("comment_id"));
-	console.logCyan("    -> mirrored_image = " + story.get("mirrored_image"));
+	if(StoryQueue.where({"id": story.get("id"), "comment_id": null}).length == 0) {
+		console.error(("DUPLICATE COMMENT DETECTED " + commentProgress + ":").bold.inverse);
+		console.error('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')');
+		console.error('    -> ' + story.get("url").underline);
+		return false;
+	}
 	
 	reddit.comment({
 		thingId: story.get("id"),
@@ -263,11 +278,6 @@ function commentLoop() {
 			
 			var commentID = response.data.id;
 			
-			console.logCyan("About to update comment_id to " + response.data.id + ":");
-			console.logCyan("    -> ignore         = " + story.get("ignore"));
-			console.logCyan("    -> comment_id     = " + story.get("comment_id"));
-			console.logCyan("    -> mirrored_image = " + story.get("mirrored_image"));
-			
 			story.set({"comment_id": response.data.id});
 			
 			console.beep();
@@ -278,12 +288,6 @@ function commentLoop() {
 			
 			StoryQueue.save();
 			
-		},
-		complete: function(){
-			console.logCyan("Just Commented:");
-			console.logCyan("    -> ignore         = " + story.get("ignore"));
-			console.logCyan("    -> comment_id     = " + story.get("comment_id"));
-			console.logCyan("    -> mirrored_image = " + story.get("mirrored_image"));
 		}
 	});
 	
