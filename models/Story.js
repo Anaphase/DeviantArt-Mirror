@@ -9,7 +9,12 @@ module.exports = Backbone.Model.extend({
     
     defaults: {
         
-        "queue_position": 0 // initially set to the story's score, but can change dynamically
+        // this will change every time there is a major restructure of the Story model
+        // 1 = original structure
+        // 2 = added "deviantart" and "imgur" objects
+        "legacy": 2
+        
+      , "queue_position": 0 // initially set to the story's score, but can change dynamically
       , "failed_mirrors": 0 // determines how far down the queue we'll place this story if a mirror fails
       , "failed_comments": 0 // determines how far down the queue we'll place this story if a comment fails
       , "deviantart": {} // data returned from backend.deviantart.com

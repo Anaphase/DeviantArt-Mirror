@@ -184,7 +184,7 @@ function commentLoop() {
     // put Scootaloo in the comment if we're on MLP :D
     pony = (story.get("subreddit").toLowerCase() == "mylittlepony") ? "[](/scootacheer)" : "",
     
-    commentText = pony + "[Here's an Imgur mirror!](" + story.get("imgur_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report&text=http://reddit.com" + encodeURIComponent(story.get("permalink")) + "%20Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot)"
+    commentText = pony + "[Here's an Imgur mirror!](" + story.get("imgur_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report&text=http://reddit.com" + encodeURIComponent(story.get("permalink")) + "%20Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot) ^| [^Request ^Removal](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot&message=Please%20remove%20the%20image%20DeviantArtMirrorBot%20linked%20to%20in%20http://reddit.com" + encodeURIComponent(story.get("permalink")) + ")"
     
     // double check for duplicate comments (should already be taken care of by StoryQueue.getNextStoryForComment())
     if (StoryQueue.where({"id": story.get("id"), "comment_id": null}).length == 0) {
