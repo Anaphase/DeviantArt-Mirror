@@ -12,8 +12,10 @@ module.exports = Backbone.Model.extend({
         "queue_position": 0 // initially set to the story's score, but can change dynamically
       , "failed_mirrors": 0 // determines how far down the queue we'll place this story if a mirror fails
       , "failed_comments": 0 // determines how far down the queue we'll place this story if a comment fails
-      , "deviantart_image": null
-      , "mirrored_image": null
+      , "deviantart": {} // data returned from backend.deviantart.com
+      , "deviantart_image": null // a shortcut to this.deviantart.url
+      , "imgur": {} // data returned from imgur api upload
+      , "imgur_image": null // a shortcut to "http://imgur.com/" + this.upload.image.hash
       , "comment_id": null // the Reddit "Thing ID" that denotes the comment I've made on this story
         
       , "ignore": false // set to true when this story has failed to mirror/comment a lot
@@ -103,7 +105,7 @@ module.exports = Backbone.Model.extend({
         
         this.set({"queue_position": newQueuePosition})
         
-        this.collection.sort()
+        this.collection.sort().save()
         
         // console.log("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".")
         

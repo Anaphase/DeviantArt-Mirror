@@ -17,7 +17,6 @@
 var imgur       = require('./lib/imgur.js')
   , reddit      = require('./lib/reddit.js')
   , deviantart  = require('./lib/deviantart.js')
-  , credentials = require('./lib/credentials.js')
     
   , console     = require('./lib/console.js') // requires 'colors' too
     
@@ -57,13 +56,14 @@ var imgur       = require('./lib/imgur.js')
 
 console.log("DeviantArt Mirror Bot - By http://reddit.com/u/Anaphase".cyan.underline.inverse)
 
+// *****************************
+// TODO: blacklist /r/mlpdrawingschool
+// *****************************
+
 reddit.login({
-    username: credentials.reddit.username
-  , password: credentials.reddit.password
-  , error: function(errors){
-        errors.forEach(function(error){
-            console.error("Error logging in: " + error[1])
-        })
+    error: function(error){
+        console.error("Error logging in: ")
+        console.error(error)
     }
   , success: function(){
         console.logGrey("Logged in.")
@@ -76,12 +76,16 @@ reddit.login({
 function storyLoop() {
     
     reddit.getStories({
-        subreddit: "/domain/deviantart.com"
+        //subreddit: "/domain/deviantart.com"
+        subreddit: "/r/totally_not_a_bot"
       , error: function(error, response, body){
-            console.error(" Error getting stories:")
+            console.error("Error getting stories:")
             console.error(error)
         }
       , success: function(stories){
+            
+            console.log("skipping getting new stories")
+            return true;
             
             var numAddedStories = ""
             
@@ -123,10 +127,17 @@ function mirrorLoop() {
             story.failedToMirror()
             startCommentLoop()
         },
-        success: function(deviantart){
+        success: function(deviantart_data){
+            
+            story.set({
+                "deviantart": deviantart_data
+              , "deviantart_image": deviantart_data.url // shortcut to image url
+            })
             
             imgur.mirror({
-                url: deviantart.url,
+                url: deviantart_data.url,
+                title: '"' + deviantart_data.title + '" by ' + deviantart_data.author_name,
+                caption: 'More art by ' + deviantart_data.author_name + ' @ ' +deviantart_data.author_url,
                 error: function(error){
                     console.error(("Failed to mirror image " + mirrorProgress + " (attempt " + (story.get("failed_mirrors")+1) + " of " + story.get("ignore_threshold") + "):").bold)
                     console.error('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')')
@@ -134,23 +145,16 @@ function mirrorLoop() {
                     console.error(error)
                     story.failedToMirror()
                 },
-                success: function(mirrored_image){
-                    
-                    if (!deviantart.url || !mirrored_image || mirrored_image == "http://imgur.com/?error") {
-                        console.error(("Failed to mirror image " + mirrorProgress + " (attempt " + (story.get("failed_mirrors")+1) + " of " + story.get("ignore_threshold") + "):").bold)
-                        console.error('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')')
-                        console.error('    -> ' + story.get("url").underline)
-                        story.failedToMirror()
-                    }
+                success: function(imgur_data){
                     
                     story.set({
-                        "deviantart_image": deviantart.url,
-                        "mirrored_image": mirrored_image
+                        "imgur": imgur_data
+                      , "imgur_image": "http://imgur.com/" + story.get("upload").image.hash // shortcut to image url
                     })
                     
                     console.logBold("Mirrored image " + mirrorProgress + ":")
                     console.log('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')')
-                    console.log('    -> ' + story.get("mirrored_image").underline)
+                    console.log('    -> ' + story.get("imgur_image").underline)
                     
                     StoryQueue.save()
                 },
@@ -180,7 +184,7 @@ function commentLoop() {
     // put Scootaloo in the comment if we're on MLP :D
     pony = (story.get("subreddit").toLowerCase() == "mylittlepony") ? "[](/scootacheer)" : "",
     
-    commentText = pony + "[Here's an Imgur mirror!](" + story.get("mirrored_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report&text=http://reddit.com" + encodeURIComponent(story.get("permalink")) + "%20Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot)"
+    commentText = pony + "[Here's an Imgur mirror!](" + story.get("imgur_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report&text=http://reddit.com" + encodeURIComponent(story.get("permalink")) + "%20Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot)"
     
     // double check for duplicate comments (should already be taken care of by StoryQueue.getNextStoryForComment())
     if (StoryQueue.where({"id": story.get("id"), "comment_id": null}).length == 0) {
@@ -198,7 +202,13 @@ function commentLoop() {
             console.error("Failed to comment on story " + commentProgress + " (attempt " + (story.get("failed_comments")+1) + " of " + story.get("ignore_threshold") + "):")
             console.error('    [' + story.get("score") + '] "' + story.get("title").italic + '" (' + ('http://reddit.com' + story.get("permalink")).underline + ')')
             console.error(error)
-            story.failedToComment()
+            
+            console.log(story.attributes)
+            
+            if(error == "the link you are commenting on has been deleted")
+                story.set({"failed_mirrors": story.get("ignore_threshold") , "ignore": true})
+            else
+                story.failedToComment()
         }
       , success: function(response){
             
