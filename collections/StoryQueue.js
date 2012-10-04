@@ -57,7 +57,7 @@ module.exports = Backbone.Collection.extend({
     
   , numMirrored: function(){
         return this.filter(function(story){
-            return story.get("mirrored_image") !== null && !story.get("ignore")
+            return story.get("imgur_image") !== null && !story.get("ignore")
         }).length
     }
     
@@ -69,7 +69,7 @@ module.exports = Backbone.Collection.extend({
     
   , numNotMirrored: function(){
         return this.filter(function(story){
-            return story.get("mirrored_image") === null && !story.get("ignore")
+            return story.get("imgur_image") === null && !story.get("ignore")
         }).length
     }
     
@@ -82,15 +82,15 @@ module.exports = Backbone.Collection.extend({
     // find the first story that hasn't been mirrored yet
   , getNextStoryForMirror: function(){
         return this.find(function(story){
-            return story.get("mirrored_image") === null && !story.get("ignore")
-        })    
+            return story.get("imgur_image") === null && !story.get("ignore")
+        })
     }
     
     // find the first story that has been mirrored, but hasn't been commented on yet
   , getNextStoryForComment: function(){
         return this.find(function(story){
-            return story.get("mirrored_image") !== null && story.get("comment_id") === null && !story.get("ignore")
-        })    
+            return story.get("imgur_image") !== null && story.get("comment_id") === null && !story.get("ignore")
+        })
     }
     
   , load: function(){
