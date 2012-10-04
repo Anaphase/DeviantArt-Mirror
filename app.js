@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 /*******************************************************************************
- 
- DeviantArt Mirror (Reddit Bot)
- 
- Scans Reddit submissions for DeviantArt links and hosts them,
- on Imgur then comments on the Reddit submission with a link. 
- 
- by Colin Wood (http://reddit.com/user/Anaphase)
- 
- License: WTFPL (http://sam.zoy.org/wtfpl/)
- Attribution is cool but not required
- 
+    
+    DeviantArt Mirror (Reddit Bot)
+    
+    Scans Reddit submissions for DeviantArt links and hosts them,
+    on Imgur then comments on the Reddit submission with a link. 
+    
+    by Colin Wood (http://reddit.com/user/Anaphase)
+    
+    License: WTFPL (http://sam.zoy.org/wtfpl/)
+    Attribution is cool but not required.
+    
 *******************************************************************************/
 
 var imgur       = require('./lib/imgur.js')
@@ -57,6 +57,11 @@ var imgur       = require('./lib/imgur.js')
     })
 
 console.log("DeviantArt Mirror Bot - By http://reddit.com/u/Anaphase".underline.inverse)
+
+var request = require('request')
+    fs = require('fs')
+watermarkImage()
+return
 
 reddit.login({
     error: function(error){
@@ -200,7 +205,7 @@ function commentLoop() {
     // put Scootaloo in the comment if we're on MLP :D
     pony = (story.get("subreddit").toLowerCase() == "mylittlepony") ? "[](/scootacheer)" : "",
     
-    commentText = pony + "[Here's an Imgur mirror!](" + story.get("imgur_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report&text=http://reddit.com" + encodeURIComponent(story.get("permalink")) + "%20Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot) ^| [^Request ^Removal](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot%20Removal%20Request&message=Please%20remove%20the%20image%20DeviantArtMirrorBot%20linked%20to%20in%20http://reddit.com" + encodeURIComponent(story.get("permalink")) + ") ([" + story.get("imgur_image") + "](" + story.get("imgur_image") + "))"
+    commentText = pony + "[Here's an Imgur mirror!](" + story.get("imgur_image") + ")\n- - -\n^I ^am ^a ^bot. ^| [^FAQ](http://www.reddit.com/r/DeviantArtMirrorBot/comments/10cupp/faq/) ^| [^Report ^a ^Problem](http://www.reddit.com/r/DeviantArtMirrorBot/submit?title=Problem%20Report&text=http://reddit.com" + encodeURIComponent(story.get("permalink")) + "%20Describe%20the%20problem%20here.) ^| [^Contact ^the ^Creator](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot) ^| [^Request ^Removal](http://www.reddit.com/message/compose/?to=Anaphase&subject=ATTN:%20DeviantArtMirrorBot%20Removal%20Request&message=Please%20remove%20the%20image%20DeviantArtMirrorBot%20linked%20to%20in%20http://reddit.com" + encodeURIComponent(story.get("permalink")) + "%20-%20" + story.get("imgur_image") + ")"
     
     // double check for duplicate comments (should already be taken care of by StoryQueue.getNextStoryForComment())
     if (StoryQueue.where({"id": story.get("id"), "comment_id": null}).length == 0) {
@@ -239,4 +244,23 @@ function commentLoop() {
             StoryQueue.save()
         }
     })
+}
+
+function watermarkImage() {
+    
+    request('http://i.imgur.com/rWPqv.jpg', function (error, response, body) {
+        
+        fs.writeFile('test.jpg', body, 'binary', function (error) {
+            
+            if (error) {
+                console.log(error)
+                return
+            }
+            
+            console.log('File saved')
+            
+        })
+        
+    })
+    
 }
