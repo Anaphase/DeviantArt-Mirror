@@ -59,7 +59,9 @@ var imgur       = require('./lib/imgur.js')
 console.log("DeviantArt Mirror Bot - By http://reddit.com/u/Anaphase".underline.inverse)
 
 var request = require('request')
-    fs = require('fs')
+  , fs = require('fs')
+  , gm = require('gm')
+  , im = gm.subClass({ imageMagick: true })
 watermarkImage()
 return
 
@@ -248,19 +250,24 @@ function commentLoop() {
 
 function watermarkImage() {
     
-    request('http://i.imgur.com/rWPqv.jpg', function (error, response, body) {
-        
-        fs.writeFile('test.jpg', body, 'binary', function (error) {
-            
-            if (error) {
-                console.log(error)
-                return
-            }
-            
-            console.log('File saved')
-            
-        })
-        
-    })
+    var writeStream = request('http://i.imgur.com/rWPqv.jpg').pipe(fs.createWriteStream('test.jpg'))
     
+    writeStream.on('close', function(){
+        
+        var readStream = fs.createReadStream('test.jpg')
+        
+        im(readStream, 'test.jpg').write("test2.png", function (error) {
+            if (error) console.log(error)
+            else {
+                im('test2.png')
+                    .font("Helvetica Neue.ttf", 56)
+                    .fill("rgba(0, 0, 0, .5)")
+                    .drawText(0, 10, "Art by ^DemonMathiel Long Text", "south")
+                    .write("test2.png", function (error) {
+                        if (!error) console.log('done')
+                        else console.log(error)
+                    })
+            }
+        })
+    })
 }
