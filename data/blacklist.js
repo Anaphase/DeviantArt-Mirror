@@ -3,7 +3,7 @@ module.exports = {
         "mlpdrawingschool"
     ],
     "authors": [ // Reddit users
-        
+        "stabbing_robot"
     ],
     "artists": [ // DeviantArt users
         
