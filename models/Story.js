@@ -34,6 +34,7 @@ module.exports = Backbone.Model.extend({
           , "bitly": 0
           , "watermark": 0
           , "comment": 0
+          , "rand": Math.random()
         }
         
         // REDDIT DATA
@@ -120,7 +121,7 @@ module.exports = Backbone.Model.extend({
         
         this.collection.sort().save()
         
-        console.info("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".")
+        // console.info("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".")
         
     }
     

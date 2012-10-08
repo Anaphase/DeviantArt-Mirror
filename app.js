@@ -3,7 +3,28 @@
 var damb    = require('./damb.js')
   , console = require('./lib/console.js') // requires 'colors' too
 
-console.log("DeviantArt Mirror Bot - By http://reddit.com/u/Anaphase".underline.inverse)
+console.log('DeviantArt Mirror Bot - By http://reddit.com/u/Anaphase'.underline.inverse)
+
+damb.login(function(){
+    damb.getStories(function(){
+        damb.getDeviantArtData(function(){
+            damb.shortenUrl(function(){
+                damb.watermark(function(){
+                    // watermark every minute
+                    setInterval(function(){ damb.watermark() }, 1000 * 30)
+                })
+                // shorten a link every 30 seconds
+                setInterval(function(){ damb.shortenUrl() }, 1000 * 30)
+            })
+            // get DA data 30 seconds
+            setInterval(function(){ damb.getDeviantArtData() }, 1000 * 30)
+        })
+        // get new stories every 10 minutes
+        setInterval(function(){ damb.getStories() }, 1000 * 60 * 10)
+    })
+})
+
+return
 
 // login and do once cycle of commenting before starting loops
 damb.login(function(){

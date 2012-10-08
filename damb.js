@@ -12,23 +12,32 @@
     
 *******************************************************************************/
 
-var imgur       = require('./lib/imgur.js')
-  , bitly       = require('./lib/bitly.js')
-  , reddit      = require('./lib/reddit.js')
-  , deviantart  = require('./lib/deviantart.js')
+var imgur         = require('./lib/imgur.js')
+  , bitly         = require('./lib/bitly.js')
+  , reddit        = require('./lib/reddit.js')
+  , deviantart    = require('./lib/deviantart.js')
   
-  , fs          = require('fs')
-  , request     = require('request')
-  , imagemagick = require('gm').subClass({ imageMagick: true })
+  , fs            = require('fs')
+  , request       = require('request')
+  , imagemagick   = require('gm').subClass({ imageMagick: true })
     
-  , console     = require('./lib/console.js') // requires 'colors' too
+  , console       = require('./lib/console.js') // requires 'colors' too
     
-  , _           = require('underscore')
-  , Backbone    = require('backbone')
+  , _             = require('underscore')
+  , Backbone      = require('backbone')
     
-  , StoryQueue = new (require('./collections/StoryQueue.js'))
+  , StoryQueue    = new (require('./collections/StoryQueue.js'))
     
-  , blacklist = require('./data/blacklist.js')
+  , blacklist     = require('./data/blacklist.js')
+  
+  , watermarkData = {
+        fontSize: 14
+      , fontFill: 'rgba(255, 255, 255, 1)'
+      , fontStroke: null
+      , overlayMargin: 5
+      , overlayFill: 'rgba(0, 0, 0, .25)'
+      , overlayStroke: null
+    }
   
     // used to only print "all stories mirrored/commented/etc" once, until there are more stories in the queue
   , emptyDeviantArtDefault = function(){ console.logTime(); console.info("All stories in queue have DeviantArt data!") }
@@ -65,8 +74,8 @@ module.exports = {
         if (typeof callback !== 'function') callback = function(){}
         
         reddit.getStories({
-            subreddit: '/domain/deviantart.com'
-            //subreddit: '/r/totally_not_a_bot'
+            //subreddit: '/domain/deviantart.com'
+            subreddit: '/r/totally_not_a_bot'
           , error: function(error, response, body){
                 console.logTime()
                 console.beep()
@@ -140,7 +149,10 @@ module.exports = {
                 console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
                 console.error('    -> ' + story.get('url').underline)
                 console.error(error)
+                
+                console.log(StoryQueue.pluck('failures'))
                 story.failed('deviantart')
+                console.log(StoryQueue.pluck('failures'))
             }
           , success: function(data){
                 
@@ -259,13 +271,8 @@ module.exports = {
                     return
                 }
                 
-                imagemagick(fileName)
-                .font('Helvetica.ttf', 16)
-                .stroke('rgba(0, 0, 0, .6)', 1)
-                .fill('rgba(255, 255, 255, .6)')
-                .drawText(0, 10, '"' + story.get('deviantart').title + '"\nby ' + story.get('deviantart').author_name + ' | ' + story.get('bitly_url'), 'south')
-                .write(fileName, function (error) {
-                    
+                // we first need to get the image's size to determine how to draw things
+                imagemagick(fileName).size(function(error, size){
                     if (error) {
                         console.logTime()
                         console.beep()
@@ -278,18 +285,41 @@ module.exports = {
                         return
                     }
                     
-                    story.set({
-                        'watermarked_image': fileName
+                    imagemagick(fileName)
+                    .fill(watermarkData.overlayFill)
+                    .stroke(watermarkData.overlayStroke)
+                    .drawRectangle(0, size.height, size.width, size.height-(watermarkData.fontSize*2 + watermarkData.overlayMargin*2))
+                    .font('Helvetica.ttf', watermarkData.fontSize)
+                    .fill(watermarkData.fontFill)
+                    .stroke(watermarkData.fontStroke)
+                    .drawText(0, watermarkData.overlayMargin, story.get('deviantart').title + '\nby ' + story.get('deviantart').author_name + ' | ' + story.get('bitly_url'), 'south')
+                    .write(fileName, function (error) {
+                        
+                        if (error) {
+                            console.logTime()
+                            console.beep()
+                            console.error(('Failed to watermark image ' + progress + ' (attempt ' + (story.get('failures').mirror+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
+                            console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
+                            console.error('    -> ' + story.get('url').underline)
+                            console.error(error)
+                            story.failed('watermark')
+                            callback()
+                            return
+                        }
+                        
+                        story.set({
+                            'watermarked_image': fileName
+                        })
+                        
+                        console.logTime()
+                        console.logBlue(('Watermarked image ' + progress + ':').bold)
+                        console.logBlue('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
+                        console.logBlue('    -> ' + story.get('watermarked_image').underline)
+                        
+                        StoryQueue.save()
+                        
+                        callback()
                     })
-                    
-                    console.logTime()
-                    console.logBlue(('Watermarked image ' + progress + ':').bold)
-                    console.logBlue('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
-                    console.logBlue('    -> ' + story.get('watermarked_image').underline)
-                    
-                    StoryQueue.save()
-                    
-                    callback()
                 })
             })
         })
