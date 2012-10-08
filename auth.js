@@ -1,17 +1,18 @@
+// This is a helper script used to obtain an Imgur access token from a key & secrect
+
 var passport    = require('passport')
   , express     = require('express')
-  , ouath       = require('express')
   
   , app         = express()
   
-  , credentials = require('./lib/credentials.js')
+  , credentials = require('./data/credentials.js').imgur
   
   , OAuth       = require('oauth').OAuth
   , oa          = new OAuth(
        "https://api.imgur.com/oauth/request_token"
 	 , "https://api.imgur.com/oauth/access_token"
-	 , credentials.imgur.key
-	 , credentials.imgur.secret
+	 , credentials.key
+	 , credentials.secret
 	 , "1.0"
 	 , "http://localhost/callback"
 	 , "HMAC-SHA1"
