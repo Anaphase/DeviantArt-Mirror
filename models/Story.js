@@ -3,28 +3,38 @@ var _        = require('underscore')
     
   , console  = require('../lib/console.js')
     
-  , ignoreThreshold = 5 // how many failed mirrors or comments before we stop trying?
+  , ignoreThreshold = 5 // how many failed mirrors, comments, etc before we stop trying?
 
 module.exports = Backbone.Model.extend({
     
     defaults: {
         
-        // this will change every time there is a major restructure of the Story model
-        // 1 = original structure
-        // 2 = added "deviantart" and "imgur" objects
-        "legacy": 2
+        "queue_position": 0 // initially set to the story's score, but can change dynamically
         
-      , "queue_position": 0 // initially set to the story's score, but can change dynamically
-      , "failed_mirrors": 0 // determines how far down the queue we'll place this story if a mirror fails
-      , "failed_comments": 0 // determines how far down the queue we'll place this story if a comment fails
-      , "deviantart": {} // data returned from backend.deviantart.com
+      , "reddit": {} // data returned from http://www.reddit.com/api/comment
+      , "comment_id": null // the Reddit "Thing ID" that denotes the comment I've made on this story
+        
+      , "deviantart": {} // data returned from http://www.backend.deviantart.com
       , "deviantart_image": null // a shortcut to this.deviantart.url
+        
+      , "bitly": {} // data returned from http://api.bitly.com/v3/shorten
+      , "bitly_url": null // a shortcut to this.bitly.url
+        
+      , "watermarked_image": null
+        
       , "imgur": {} // data returned from imgur api upload
       , "imgur_image": null // a shortcut to "http://imgur.com/" + this.upload.image.hash
-      , "comment_id": null // the Reddit "Thing ID" that denotes the comment I've made on this story
         
       , "ignore": false // set to true when this story has failed to mirror/comment a lot
       , "ignore_threshold": ignoreThreshold // how many failed mirrors or comments before we stop trying?
+      
+      , "failures": { // determines how far down the queue we'll place this story upon failures
+            "deviantart": 0
+          , "mirror": 0
+          , "bitly": 0
+          , "watermark": 0
+          , "comment": 0
+        }
         
         // REDDIT DATA
       , "kind": "t3"
@@ -62,45 +72,43 @@ module.exports = Backbone.Model.extend({
       , "media": null
       , "num_reports": null
       , "ups": 0
-    },
+    }
     
-    initialize: function(){
+  , initialize: function(){
         
         this.set({
             "queue_position": this.get("score")
           , "ignore_threshold": ignoreThreshold
-          , "ignore": (this.get("failed_mirrors") >= ignoreThreshold)
         })
         
-        if (this.get("failed_mirrors") > 0)
-            this.backoff(this.get("failed_mirrors"))
-        
-        if (this.get("failed_comments") > 0)
-            this.backoff(this.get("failed_comments"))
-        
-        this.on("change:failed_mirrors", function(){
-            this.backoff(this.get("failed_mirrors"))
+        this.on("change:failures", function(){
+            _.each(this.get("failures"), function(value, key, list){
+                if (value >= this.get("ignore_threshold"))
+                    this.set({"ignore": true})
+                else if (value > 0)
+                    this.backoff(value)
+            }, this)
+            this.collection.save()
         }, this)
         
-        this.on("change:failed_comments", function(){
-            this.backoff(this.get("failed_comments"))
-        }, this)
-    },
+        this.trigger("change:failures")
+    }
     
-    failedToMirror: function(){
-        var failed_mirrors   = this.get("failed_mirrors")
-          , ignore_threshold = this.get("ignore_threshold")
-        this.set({ "failed_mirrors": failed_mirrors + 1, "ignore": (failed_mirrors >= ignore_threshold) })
-    },
-    
-    failedToComment: function(){
-        var failed_comments  = this.get("failed_comments")
-          , ignore_threshold = this.get("ignore_threshold")
-        this.set({ "failed_comments": failed_comments + 1, "ignore": (failed_comments >= ignore_threshold) })
-    },
+  , failed: function(type, value){
+        
+        if(!this.get("failures")[type]) this.get("failures")[type] = 0
+        
+        if(value)
+            this.get("failures")[type] = value
+        else
+            this.get("failures")[type]++
+            
+        this.trigger("change:failures")
+        
+    }
     
     // move down in the queue with an exponential backoff
-    backoff: function(exponent){
+  , backoff: function(exponent){
         
         var oldQueuePosition = this.get("queue_position"),
             newQueuePosition = this.get("score") - Math.pow(2, exponent)
@@ -112,7 +120,7 @@ module.exports = Backbone.Model.extend({
         
         this.collection.sort().save()
         
-        // console.log("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".")
+        console.info("Story " + this.get("id") + " moved in queue from " + oldQueuePosition + " to " + this.get("queue_position") + ".")
         
     }
     
