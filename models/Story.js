@@ -12,7 +12,7 @@ module.exports = Backbone.Model.extend({
         "queue_position": 0 // initially set to the story's score, but can change dynamically
         
       , "reddit": {} // data returned from http://www.reddit.com/api/comment
-      , "comment_id": null // the Reddit "Thing ID" that denotes the comment I've made on this story
+      , "comment_id": null // shortcut to this.reddit.id (the Reddit "Thing ID" that denotes the comment I've made on this story)
         
       , "deviantart": {} // data returned from http://www.backend.deviantart.com
       , "deviantart_image": null // a shortcut to this.deviantart.url
