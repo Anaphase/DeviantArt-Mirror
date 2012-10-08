@@ -66,7 +66,7 @@ module.exports = Backbone.Collection.extend({
         data = data || {}
         
         //  variable          source           default
-        var errorCallback   = data.error    || function(error){ console.error("Error saving StoryQueue:"); console.error(error) },
+        var errorCallback   = data.error    || function(error){ console.beep(); console.error("Error saving StoryQueue:"); console.error(error) },
             successCallback = data.success  || function(){}
         
         fs.writeFile("./data/StoryQueue.json", JSON.stringify(this.toJSON()), function (error) {
