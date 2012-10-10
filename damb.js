@@ -1,9 +1,9 @@
 /*******************************************************************************
     
-    DeviantArt Mirror (Reddit Bot)
+    Deviant Art Mirror Bot (for Reddit)
     
-    Scans Reddit submissions for DeviantArt links and hosts them,
-    on Imgur then comments on the Reddit submission with a link. 
+    Scans Reddit submissions for DeviantArt links and hosts them
+    on Imgur, then comments on the Reddit submission with a link. 
     
     by Colin Wood (http://reddit.com/user/Anaphase)
     
@@ -31,20 +31,20 @@ var imgur         = require('./lib/imgur.js')
   , blacklist     = require('./data/blacklist.js')
   
   , watermarkData = {
-        fontSize: 14
+        fontSize: 16
       , fontFill: 'rgba(255, 255, 255, 1)'
       , fontStroke: null
       , overlayMargin: 5
-      , overlayFill: 'rgba(0, 0, 0, .25)'
+      , overlayFill: 'rgba(0, 0, 0, .40)'
       , overlayStroke: null
     }
   
     // used to only print "all stories mirrored/commented/etc" once, until there are more stories in the queue
-  , emptyDeviantArtDefault = function(){ console.logTime(); console.info("All stories in queue have DeviantArt data!") }
-  , emptyShortenDefault = function(){ console.logTime(); console.info("All stories in queue have bitly URLs!") }
-  , emptyWatermarkDefault = function(){ console.logTime(); console.info("All stories in queue have been watermarked!") }
-  , emptyMirrorDefault = function(){ console.logTime(); console.info("All stories in queue have been mirrored!") }
-  , emptyCommentDefault = function(){ console.logTime(); console.info("All stories in queue have been commented on!") }
+  , emptyDeviantArtDefault = function(){ console.logTime(); console.info('All stories in queue have DeviantArt data!') }
+  , emptyShortenDefault = function(){ console.logTime(); console.info('All stories in queue have bit.ly URLs!') }
+  , emptyWatermarkDefault = function(){ console.logTime(); console.info('All stories in queue have been watermarked!') }
+  , emptyMirrorDefault = function(){ console.logTime(); console.info('All stories in queue have been mirrored!') }
+  , emptyCommentDefault = function(){ console.logTime(); console.info('All stories in queue have been commented on!') }
   , emptyDeviantArt = _.once(emptyDeviantArtDefault)
   , emptyShorten = _.once(emptyShortenDefault)
   , emptyWatermark = _.once(emptyWatermarkDefault)
@@ -58,11 +58,11 @@ module.exports = {
         reddit.login({
             error: function(error){
                 console.beep()
-                console.error("Error logging in: ")
+                console.error('Error logging in: ')
                 console.error(error)
             }
           , success: function(){
-                console.info("Logged in.")
+                console.info('Logged in.')
                 callback()
             }
         })
@@ -109,13 +109,13 @@ module.exports = {
     
   , processStory: _.throttle(function(callback){
         
-        var damb = this
+        var self = this
         
-        damb.getDeviantArtData(function(){
-            damb.shortenUrl(function(){
-                damb.watermark(function(){
-                    damb.mirror(function(){
-                        damb.comment(callback)
+        self.getDeviantArtData(function(){
+            self.shortenUrl(function(){
+                self.watermark(function(){
+                    self.mirror(function(){
+                        self.comment(callback)
                     })
                 })
             })
@@ -125,14 +125,15 @@ module.exports = {
     
   , getDeviantArtData: function(callback){
         
-        var story     = StoryQueue.find(function(story){ return !story.get('ignore') && _.isEmpty(story.get('deviantart')) })
+        var self      = this
+          , story     = StoryQueue.find(function(story){ return !story.get('ignore') && _.isEmpty(story.get('deviantart')) })
           , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('deviantart')) }).length
           , progress  = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
         
         if (typeof callback !== 'function') callback = function(){}
         
         if (!story) {
-            if(totalLeft == 0) emptyDeviantArt()
+            if (totalLeft == 0) emptyDeviantArt()
             callback()
             return
         }
@@ -149,10 +150,8 @@ module.exports = {
                 console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
                 console.error('    -> ' + story.get('url').underline)
                 console.error(error)
-                
-                console.log(StoryQueue.pluck('failures'))
                 story.failed('deviantart')
-                console.log(StoryQueue.pluck('failures'))
+                self.getDeviantArtData(callback)
             }
           , success: function(data){
                 
@@ -165,6 +164,7 @@ module.exports = {
                     console.error('    -> ' + story.get('url').underline)
                     
                     story.failed('deviantart', story.get('ignore_threshold'))
+                    callback()
                     return
                 }
                 
@@ -179,21 +179,23 @@ module.exports = {
                 console.logYellow('    -> ' + story.get('url').underline)
                 
                 StoryQueue.save()
+                callback()
             }
-          , complete: callback
+          //, complete: callback
         })
     }
     
   , shortenUrl: function(callback){
         
-        var story     = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && _.isEmpty(story.get('bitly')) })
+        var self      = this
+          , story     = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && _.isEmpty(story.get('bitly')) })
           , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('bitly')) }).length
           , progress  = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
         
         if (typeof callback !== 'function') callback = function(){}
         
         if (!story) {
-            if(totalLeft == 0) emptyShorten()
+            if (totalLeft == 0) emptyShorten()
             callback()
             return
         }
@@ -211,6 +213,7 @@ module.exports = {
                 console.error('    -> ' + story.get('url').underline)
                 console.error(error)
                 story.failed('bitly')
+                self.shortenUrl(callback)
             }
           , success: function(data){
                 
@@ -225,14 +228,16 @@ module.exports = {
                 console.logMagenta('    -> ' + data.url)
                 
                 StoryQueue.save()
+                callback()
             }
-          , complete: callback
+          //, complete: callback
         })
     }
     
   , watermark: function(callback){
         
-        var story       = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && !story.get('watermarked_image') })
+        var self        = this
+          , story       = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && !story.get('watermarked_image') })
           , totalLeft   = StoryQueue.filter(function(story){ return !story.get('ignore') && !story.get('watermarked_image') }).length
           , progress    = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
           , fileName    = null
@@ -242,7 +247,7 @@ module.exports = {
         if (typeof callback !== 'function') callback = function(){}
         
         if (!story) {
-            if(totalLeft == 0) emptyWatermark()
+            if (totalLeft == 0) emptyWatermark()
             callback()
             return
         }
@@ -267,7 +272,7 @@ module.exports = {
                     console.error('    -> ' + story.get('url').underline)
                     console.error(error)
                     story.failed('watermark')
-                    callback()
+                    self.watermark(callback)
                     return
                 }
                 
@@ -281,7 +286,7 @@ module.exports = {
                         console.error('    -> ' + story.get('url').underline)
                         console.error(error)
                         story.failed('watermark')
-                        callback()
+                        self.watermark(callback)
                         return
                     }
                     
@@ -303,7 +308,7 @@ module.exports = {
                             console.error('    -> ' + story.get('url').underline)
                             console.error(error)
                             story.failed('watermark')
-                            callback()
+                            self.watermark(callback)
                             return
                         }
                         
@@ -327,14 +332,15 @@ module.exports = {
     
   , mirror: function(callback){
         
-        var story     = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && story.get('watermarked_image') && _.isEmpty(story.get('imgur')) })
+        var self      = this
+          , story     = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && story.get('watermarked_image') && _.isEmpty(story.get('imgur')) })
           , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('imgur')) }).length
           , progress  = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
         
         if (typeof callback !== 'function') callback = function(){}
         
         if (!story) {
-            if(totalLeft == 0) emptyMirror()
+            if (totalLeft == 0) emptyMirror()
             callback()
             return
         }
@@ -354,6 +360,7 @@ module.exports = {
                 console.error('    -> ' + story.get('url').underline)
                 console.error(error)
                 story.failed('mirror')
+                self.mirror(callback)
             }
           , success: function(data){
                 
@@ -368,14 +375,16 @@ module.exports = {
                 console.logCyan('    -> ' + story.get('imgur_image').underline)
                 
                 StoryQueue.save()
+                callback()
             }
-          , complete: callback
+          //, complete: callback
         })
     }
     
   , comment: function(callback){
         
-        var story       = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && story.get('watermarked_image') && !_.isEmpty(story.get('imgur')) && _.isEmpty(story.get('reddit')) })
+        var self      = this
+          , story       = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && story.get('watermarked_image') && !_.isEmpty(story.get('imgur')) && _.isEmpty(story.get('reddit')) })
           , totalLeft   = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('reddit')) }).length
           , progress    = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
           , commentText = ''
@@ -384,7 +393,7 @@ module.exports = {
         if (typeof callback !== 'function') callback = function(){}
         
         if (!story) {
-            if(totalLeft == 0) emptyComment()
+            if (totalLeft == 0) emptyComment()
             callback()
             return
         }
@@ -404,6 +413,7 @@ module.exports = {
             console.error(('DUPLICATE COMMENT DETECTED ' + progress + ':').bold.inverse)
             console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
             console.error('    -> ' + story.get('url').underline)
+            self.comment(callback)
             return
         }
         
@@ -423,6 +433,8 @@ module.exports = {
                     story.failed('comment', story.get('ignore_threshold'))
                 else
                     story.failed('comment')
+                
+                self.comment(callback)
             }
           , success: function(data){
                 
@@ -441,8 +453,9 @@ module.exports = {
                 console.logGreen('    -> ' + ('http://reddit.com' + story.get('permalink') + '#' + data.data.id.substr(3)).underline)
                 
                 StoryQueue.save()
+                callback()
             }
-          , complete: callback
+          //, complete: callback
         })
     }
     
