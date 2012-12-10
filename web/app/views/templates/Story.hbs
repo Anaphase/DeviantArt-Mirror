@@ -1,0 +1,43 @@
+<div class="span12">
+    <div class="number">{{queue_position}}</div>
+    <div class="thumb"><img src="{{thumbnail}}" /></div>
+    <div class="data">
+    	
+    	<div class="title">
+	        <a class="title" href="http://reddit.com{{permalink}}">{{title}}</a>
+        </div>
+        
+        <span class="score">[{{score}}]</span>
+        |
+        
+        <a href="{{#if deviantart_image}}{{deviantart_image}}{{else}}#{{/if}}" {{#unless deviantart_image}}class="disabled"{{/unless}}>DeviantArt</a>
+        {{#if failures.deviantart}}
+            <small><span class="badge badge-important">{{failures.deviantart}}</span></small>
+        {{/if}}
+        |
+        
+        <a href="{{#if bitly_url}}{{bitly_url}}{{else}}#{{/if}}" {{#unless bitly_url}}class="disabled"{{/unless}}>Bit.ly</a>
+        {{#if failures.bitly}}
+            <small><span class="badge badge-important">{{failures.bitly}}</span></small>
+        {{/if}}
+        |
+        
+        <a href="{{#if watermarked_image}}../../{{watermarked_image}}{{else}}#{{/if}}" {{#unless watermarked_image}}class="disabled"{{/unless}}>Watermark</a>
+        {{#if failures.watermark}}
+            <small><span class="badge badge-important">{{failures.watermark}}</span></small>
+        {{/if}}
+        |
+        
+        <a href="{{#if imgur_image}}{{imgur_image}}{{else}}#{{/if}}" {{#unless imgur_image}}class="disabled"{{/unless}}>Mirror</a>
+        {{#if failures.mirror}}
+            <small><span class="badge badge-important">{{failures.mirror}}</span></small>
+        {{/if}}
+        |
+        
+        <a href="{{#if comment_id}}http://reddit.com{{permalink}}#{{comment_id}}{{else}}#{{/if}}" {{#unless comment_id}}class="disabled"{{/unless}}>Comment</a>
+        {{#if failures.comment}}
+            <small><span class="badge badge-important">{{failures.comment}}</span></small>
+        {{/if}}
+        
+    </div>
+</div>

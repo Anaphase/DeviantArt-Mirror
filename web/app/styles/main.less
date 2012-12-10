@@ -1,0 +1,63 @@
+body {
+	padding: 60px 20px 20px 20px;
+}
+
+.story {
+    
+    margin-bottom: 10px;
+    
+    &.ignore {
+        opacity: .4;
+    }
+    
+    .number {
+        color: #ccc;
+        float: left;
+        font-size: large;
+        font-family: Georgia, serif;
+        margin-right: 5px;
+    }
+    
+    .thumb {
+        
+        img {
+            width: 70px;
+            max-height: 70px;
+        }
+        
+        float: left;
+        width: 70px;
+        height: 70px;
+        max-height: 70px;
+        margin-right: 5px;
+        overflow: hidden;
+    }
+    
+    .title {
+        
+        margin-bottom: 5px;
+    	
+    	a {
+	        font-size: large;
+	        font-weight: bold;
+        }
+    }
+    
+    .data {
+        
+        float: left;
+        
+        a.disabled,
+        a:hover.disabled {
+            color: #dddddd;
+            text-decoration: none;
+            cursor: default;
+        }
+        
+        .score {
+	        color: #aaa;
+        }
+        
+    }
+    
+}
