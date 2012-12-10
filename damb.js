@@ -74,8 +74,8 @@ module.exports = {
         if (typeof callback !== 'function') callback = function(){}
         
         reddit.getStories({
-            //subreddit: '/domain/deviantart.com'
-            subreddit: '/r/totally_not_a_bot'
+            subreddit: '/domain/deviantart.com'
+            //subreddit: '/r/totally_not_a_bot'
           , error: function(error, response, body){
                 console.logTime()
                 console.beep()
@@ -127,7 +127,7 @@ module.exports = {
         
         var self      = this
           , story     = StoryQueue.find(function(story){ return !story.get('ignore') && _.isEmpty(story.get('deviantart')) })
-          , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('deviantart')) }).length
+          , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('deviantart')) }).length || 0
           , progress  = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
         
         if (typeof callback !== 'function') callback = function(){}
@@ -189,7 +189,7 @@ module.exports = {
         
         var self      = this
           , story     = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && _.isEmpty(story.get('bitly')) })
-          , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('bitly')) }).length
+          , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('bitly')) }).length || 0
           , progress  = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
         
         if (typeof callback !== 'function') callback = function(){}
@@ -208,7 +208,7 @@ module.exports = {
           , error: function(error){
                 console.logTime()
                 console.beep()
-                console.error(('Failed to shorten URL ' + progress + ' (attempt ' + (story.get('failures').mirror+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
+                console.error(('Failed to shorten URL ' + progress + ' (attempt ' + (story.get('failures').bitly+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
                 console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
                 console.error('    -> ' + story.get('url').underline)
                 console.error(error)
@@ -238,7 +238,7 @@ module.exports = {
         
         var self        = this
           , story       = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && !story.get('watermarked_image') })
-          , totalLeft   = StoryQueue.filter(function(story){ return !story.get('ignore') && !story.get('watermarked_image') }).length
+          , totalLeft   = StoryQueue.filter(function(story){ return !story.get('ignore') && !story.get('watermarked_image') }).length || 0
           , progress    = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
           , fileName    = null
           , writeStream = null
@@ -267,7 +267,7 @@ module.exports = {
                 if (error) {
                     console.logTime()
                     console.beep()
-                    console.error(('Failed to watermark image ' + progress + ' (attempt ' + (story.get('failures').mirror+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
+                    console.error(('Failed to watermark image ' + progress + ' (attempt ' + (story.get('failures').watermark+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
                     console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
                     console.error('    -> ' + story.get('url').underline)
                     console.error(error)
@@ -281,7 +281,7 @@ module.exports = {
                     if (error) {
                         console.logTime()
                         console.beep()
-                        console.error(('Failed to watermark image ' + progress + ' (attempt ' + (story.get('failures').mirror+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
+                        console.error(('Failed to watermark image ' + progress + ' (attempt ' + (story.get('failures').watermark+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
                         console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
                         console.error('    -> ' + story.get('url').underline)
                         console.error(error)
@@ -303,7 +303,7 @@ module.exports = {
                         if (error) {
                             console.logTime()
                             console.beep()
-                            console.error(('Failed to watermark image ' + progress + ' (attempt ' + (story.get('failures').mirror+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
+                            console.error(('Failed to watermark image ' + progress + ' (attempt ' + (story.get('failures').watermark+1) + ' of ' + story.get('ignore_threshold') + '):').bold)
                             console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
                             console.error('    -> ' + story.get('url').underline)
                             console.error(error)
@@ -334,7 +334,7 @@ module.exports = {
         
         var self      = this
           , story     = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && story.get('watermarked_image') && _.isEmpty(story.get('imgur')) })
-          , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('imgur')) }).length
+          , totalLeft = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('imgur')) }).length || 0
           , progress  = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
         
         if (typeof callback !== 'function') callback = function(){}
@@ -385,7 +385,7 @@ module.exports = {
         
         var self      = this
           , story       = StoryQueue.find(function(story){ return !story.get('ignore') && !_.isEmpty(story.get('deviantart')) && !_.isEmpty(story.get('bitly')) && story.get('watermarked_image') && !_.isEmpty(story.get('imgur')) && _.isEmpty(story.get('reddit')) })
-          , totalLeft   = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('reddit')) }).length
+          , totalLeft   = StoryQueue.filter(function(story){ return !story.get('ignore') && _.isEmpty(story.get('reddit')) }).length || 0
           , progress    = (StoryQueue.size() - totalLeft + 1) + '/' + StoryQueue.size()
           , commentText = ''
           , pony        = ''
@@ -424,10 +424,9 @@ module.exports = {
           , error: function(error){
                 console.logTime()
                 console.beep()
-                console.error('Failed to comment on story ' + progress + ' (attempt ' + (story.get('failed_comments')+1) + ' of ' + story.get('ignore_threshold') + '):')
+                console.error('Failed to comment on story ' + progress + ' (attempt ' + (story.get('failures').comment+1) + ' of ' + story.get('ignore_threshold') + '):')
                 console.error('    [' + story.get('score') + '] "' + story.get('title').italic + '" (' + ('http://reddit.com' + story.get('permalink')).underline + ')')
                 console.error(error)
-                console.error(story.attributes)
                 
                 if (error == 'the link you are commenting on has been deleted')
                     story.failed('comment', story.get('ignore_threshold'))

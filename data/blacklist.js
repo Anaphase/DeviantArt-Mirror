@@ -4,8 +4,10 @@ module.exports = {
     ]
   , 'authors': [ // Reddit users
         'stabbing_robot'
+      , 'fallenscythe'
+      , 'alucard4269'
     ]
   , 'artists': [ // DeviantArt users
-        
+        'fallenzephyr'
     ]
 }
